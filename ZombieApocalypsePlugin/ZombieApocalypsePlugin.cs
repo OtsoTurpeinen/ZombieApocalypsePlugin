@@ -9,7 +9,7 @@ namespace ZombieApocalypsePlugin
 		name = "Zombie Apocalypse",
 		description = "Pluging for cool zombie stuff",
 		id = "drteaspoon.zombie.plugin",
-		version = "1.7",
+		version = "1.8",
 		SmodMajor = 3,
 		SmodMinor = 0,
 		SmodRevision = 0
