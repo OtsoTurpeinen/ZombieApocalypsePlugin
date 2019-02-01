@@ -38,7 +38,7 @@ namespace ZombieApocalypsePlugin
 
         private bool ZombifyAllowed(PlayerDeathEvent ev)
         {
-            int[] zombroles = plugin.GetConfigIntList("zombifying_roles");
+            int[] zombroles = plugin.GetConfigIntList("zombifiable_roles");
             int[] zombdmg = plugin.GetConfigIntList("zombify_damage_type");
             for (int i = 0; i < zombroles.Length; i++)
             {
