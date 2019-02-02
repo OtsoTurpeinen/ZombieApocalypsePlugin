@@ -9,7 +9,7 @@ namespace ZombieApocalypsePlugin
 		name = "Zombie Apocalypse",
 		description = "Pluging for cool zombie stuff",
 		id = "drteaspoon.zombie.plugin",
-		version = "1.7",
+		version = "1.9",
 		SmodMajor = 3,
 		SmodMinor = 0,
 		SmodRevision = 0
@@ -28,7 +28,6 @@ namespace ZombieApocalypsePlugin
 
 		public override void Register()
 		{
-            
             this.AddConfig(new Smod2.Config.ConfigSetting("zombifiable_roles", new int[8] { 1, 4, 6, 8, 11, 12, 13, 15 }, Smod2.Config.SettingType.NUMERIC_LIST, true, "Roles that can turn into zombies."));
             this.AddConfig(new Smod2.Config.ConfigSetting("zombify_damage_type", new int[2] { 18, 19 }, Smod2.Config.SettingType.NUMERIC_LIST, true, "Damage types that induce zombification."));
             this.AddConfig(new Smod2.Config.ConfigSetting("zombi_rez_min_time", 2000, Smod2.Config.SettingType.NUMERIC, true, "Min Zombie resurection time"));

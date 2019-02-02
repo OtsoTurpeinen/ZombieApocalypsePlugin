@@ -12,10 +12,12 @@ namespace ZombieApocalypsePlugin
     {
         public PlayerDeathEvent ev;
         Role role;
+        public bool skip;
         public DeathSync(PlayerDeathEvent _ev)
         {
             ev = _ev;
             role = _ev.Player.TeamRole.Role;
+            skip = false;
         }
 
         public bool valid
@@ -23,21 +25,37 @@ namespace ZombieApocalypsePlugin
             get { return ev.Player.TeamRole.Role == role; }
         }
     }
-	class ZombieSpawnHandler : IEventHandlerPlayerDie
+	class ZombieSpawnHandler : IEventHandlerPlayerDie, IEventHandlerDisconnect
     {
 		private readonly ZombieApocalypsePlugin plugin;
 		private readonly Random random;
-        private Queue<DeathSync> eventQue;
+        private List<DeathSync> eventQue;
 
 		public ZombieSpawnHandler(ZombieApocalypsePlugin plugin)
 		{
 			random = new Random();
-            eventQue = new Queue<DeathSync>();
+            eventQue = new List<DeathSync>();
             this.plugin = plugin;
 		}
 
+
+        public void OnDisconnect(DisconnectEvent ev)
+        {
+            for (int i = eventQue.Count-1; i > -1; i--)
+            {
+                if (eventQue[i].ev.Player.IpAddress == ev.Connection.IpAddress)
+                {
+                    DeathSync d = eventQue[i];
+                    d.skip = true;
+                    eventQue[i] = d;
+                    plugin.Info(ev.Connection.IpAddress + " escaped the resurection by disconnecting! Hopefully crash averted.");
+                }
+            }
+        }
+
         private bool ZombifyAllowed(PlayerDeathEvent ev)
         {
+            
             int[] zombroles = plugin.GetConfigIntList("zombifiable_roles");
             int[] zombdmg = plugin.GetConfigIntList("zombify_damage_type");
             for (int i = 0; i < zombroles.Length; i++)
@@ -65,13 +83,11 @@ namespace ZombieApocalypsePlugin
 
         private void ZombieResurection(PlayerDeathEvent ev)
         {
-            eventQue.Enqueue(new DeathSync(ev));
+            eventQue.Add(new DeathSync(ev));
             Timer timer = new Timer(ZombieResurectCallback);
             int zomb_min = plugin.GetConfigInt("zombi_rez_min_time");
             int zomb_max = plugin.GetConfigInt("zombi_rez_max_time");
             timer.Change((int)(random.NextDouble()*(float)(zomb_max-zomb_min))+zomb_min, Timeout.Infinite);
-            // debug stuff
-            plugin.Info(ev.Player.Name + " health " + ev.Player.GetHealth());
         }
 
         private int ZombieClassify(int i)
@@ -98,24 +114,26 @@ namespace ZombieApocalypsePlugin
         private void ZombieResurectCallback(object o)
         {
             ((Timer)o).Dispose();
-            DeathSync dev = eventQue.Dequeue();
+            DeathSync dev = eventQue[0];
+            eventQue.RemoveAt(0);
+            if (dev.skip) return;
             PlayerDeathEvent ev = dev.ev;
-            plugin.Info(ev.Player.Name + " health " + ev.Player.GetHealth());
             int role_i = plugin.GetConfigInt("zombi_role");
             if (dev.valid)
             {
-                int cls = ZombieClassify(role_i);
-                if (cls < 2 && plugin.Server.Map.WarheadDetonated)
-                {
-                    return;
-                }
-
-                if (cls < 1 && plugin.Server.Map.LCZDecontaminated)
-                {
-                    return;
-                }
                 if (ev.DamageTypeVar == DamageType.WALL || ev.DamageTypeVar == DamageType.TESLA || ev.DamageTypeVar == DamageType.LURE || ev.DamageTypeVar == DamageType.DECONT) //check damage types that might get player stuck.
                 {
+                    //Thesse are to check what level of the map is disabled.
+                    //If player dies in a way that is deemed problematic (makes the player stuck) then we want to respawn at normal habitat.
+                    int cls = ZombieClassify(role_i);
+                    if (cls < 2 && plugin.Server.Map.WarheadDetonated)
+                    {
+                        return;
+                    }
+                    if (cls < 1 && plugin.Server.Map.LCZDecontaminated)
+                    {
+                        return;
+                    }
                     ev.Player.ChangeRole((Role)role_i, true, true, true, true);
                 }
                 else
@@ -133,12 +151,11 @@ namespace ZombieApocalypsePlugin
         public void OnPlayerDie(PlayerDeathEvent ev)
         {
             int role_i = plugin.GetConfigInt("zombi_role");
-            if (ev.Player.TeamRole.Role != (Role)role_i)
+            if (ev.Player != null && ev.Player.TeamRole.Role != (Role)role_i)
             {
                 if (ZombifyAllowed(ev))
                 {
                     ZombieResurection(ev);
-                    plugin.Info(ev.Player.Name + " zombification! Damage type " + ev.DamageTypeVar);
                 }
             }
             else
@@ -146,7 +163,6 @@ namespace ZombieApocalypsePlugin
                 if (!ZombiKillDamage(ev))
                 {
                     ZombieResurection(ev);
-                    plugin.Info(ev.Player.Name + " resurecting!");
                 } else
                 {
                     ZombieRewards(ev);
